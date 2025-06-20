@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>DAVE MERCY PHARMACY STUDY APP</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #f9f6ff; margin: 0; color: #333; }
+  header { background: purple; color: white; padding: 20px; text-align: center; font-size: 1.6em; user-select: none; }
+  nav, .container { text-align: center; margin: 20px auto; max-width: 800px; }
+  nav button, .category-select button {
+    margin: 5px; padding: 10px 15px; background: #800080; color: white;
+    border: none; border-radius: 10px; cursor: pointer; transition: background 0.3s;
+  }
+  nav button:hover, .category-select button:hover { background: #9a00b3; }
+  .card { background: white; border-radius:12px; padding:15px; margin:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); text-align:left; }
+  input, select { width:100%; padding:8px; margin:5px 0; border:1px solid #aaa; border-radius:6px; }
+  .footer { text-align:center;padding:20px;color:#555;font-size:.9em;cursor:default;user-select:none; }
+  .timer { font-weight:bold; color:red; margin-bottom:10px; }
+  .option-label { display:block; padding:6px 12px; margin:4px 0; border:1px solid #aaa; border-radius:8px; cursor:pointer; transition:background .2s; }
+  .option-label:hover { background: #f3e5ff; }
+  .option-input { display:none; }
+  .correct-answer { background:#d0f0c0!important; border-color:#3a923a!important; }
+  .wrong-answer { background:#f4c2c2!important; border-color:#b20000!important; }
+  .correct { color:green; }
+  .wrong { color:red; }
+  .edit-btn, .delete-btn {
+    margin: 5px; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer;
+  }
+  .edit-btn { background: #ffc107; color: #000; }
+  .delete-btn { background: #dc3545; color: #fff; }
+  #adminTotals {
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+</style>
+</head>
+<body>
+<header>DAVE MERCY PHARMACY STUDY APP</header>
+<nav>
+  <button onclick="showSection('drugArea')">📖 Drug Info</button>
+  <button onclick="showSection('categorySelector')">🧪 Start Quiz</button>
+</nav>
+<div class="container">
+
+  <div id="drugArea" style="display:none">
+    <h2>📘 Drug Information</h2>
+    <input type="text" id="searchInput" placeholder="Search drugs by name, use or class..." onkeyup="filterDrugs()" />
+    <div id="drugList"></div>
+  </div>
+
+  <div id="categorySelector" style="display:none">
+    <h2>Select Quiz Category</h2>
+    <div class="category-select">
+      <button onclick="startQuiz('use')">Use</button>
+      <button onclick="startQuiz('class')">Class</button>
+      <button onclick="startQuiz('pregnancy')">Pregnancy Safety</button>
+      <button onclick="startQuiz('whoCan')">Who Can Take</button>
+      <button onclick="startQuiz('whoCant')">Who Can't Take</button>
+    </div>
+  </div>
+
+  <div id="quizArea" style="display:none">
+    <h2>🧪 Pharmacy Quiz</h2>
+    <div class="timer" id="timer">Time: 3:00</div>
+    <form id="quizForm"></form>
+    <div id="quizResult"></div>
+  </div>
+
+  <div id="adminArea" style="display:none">
+    <h2>🔐 Admin Panel</h2>
+    <div id="adminTotals"></div>
+    <input type="text" id="adminSearchInput" placeholder="Search drugs..." onkeyup="filterAdminDrugs()" />
+    <h3>Add or Edit Drug</h3>
+    <input id="drugName" placeholder="Drug Name" />
+    <input id="drugUse" placeholder="What is it used for?" />
+    <input id="drugClass" placeholder="Drug Class" />
+    <input id="whoCan" placeholder="Who can take this drug?" />
+    <input id="whoCant" placeholder="Who can't take this drug?" />
+    <input id="pregSafe" placeholder="Pregnancy Safety (Safe/Not Safe/Use with caution)" />
+    <button onclick="saveDrug()">Save Drug</button>
+    <h3>Manage Drugs</h3>
+    <div id="adminDrugList"></div>
+  </div>
+
+</div>
+<div class="footer" ondblclick="enterAdmin()">
+  Created by Akintunde Boluwatife Precious © 2025 more info contact 07081586119
+</div>
+
+<script>
+let drugs = JSON.parse(localStorage.getItem("drugs")) || [];
+let currentQuiz = [], editingIndex = null, timeLeft=180, timer;
+
+function saveDrugs() {
+  localStorage.setItem("drugs", JSON.stringify(drugs));
+}
+
+function showSection(id) {
+  ["drugArea","categorySelector","quizArea","adminArea"].forEach(sec =>
+    document.getElementById(sec).style.display = sec===id ? "block" : "none"
+  );
+  if(id==="drugArea") loadDrugs();
+  if(id==="adminArea") {
+    renderAdminTotals();
+    renderAdminList();
+  }
+  if(id==="quizArea") document.getElementById("quizResult").innerHTML="";
+}
+
+function loadDrugs() {
+  const q = document.getElementById("searchInput").value.toLowerCase(), list=document.getElementById("drugList");
+  list.innerHTML="";
+  drugs.forEach((d,i)=>{
+    if(`${d.name} ${d.use} ${d.class}`.toLowerCase().includes(q)) {
+      const div=document.createElement("div"); div.className="card";
+      div.innerHTML = `<strong>${d.name}</strong><br><b>Use:</b> ${d.use}<br><b>Class:</b> ${d.class}<br>
+        <b>Who can:</b> ${d.whoCan}<br><b>Who can't:</b> ${d.whoCant}<br><b>Pregnancy:</b> ${d.pregnancy}`;
+      list.appendChild(div);
+    }
+  });
+}
+
+function filterDrugs() { loadDrugs(); }
+
+function enterAdmin() {
+  const pwd=prompt("Enter admin password:");
+  if(pwd==="preciousfristapp1#") showSection("adminArea");
+  else alert("Access Denied");
+}
+
+function saveDrug(){
+  const d = {
+    name:document.getElementById("drugName").value.trim(),
+    use:document.getElementById("drugUse").value.trim(),
+    class:document.getElementById("drugClass").value.trim(),
+    whoCan:document.getElementById("whoCan").value.trim(),
+    whoCant:document.getElementById("whoCant").value.trim(),
+    pregnancy:document.getElementById("pregSafe").value.trim()
+  };
+  if(Object.values(d).some(v=>!v)) return alert("Please fill all fields");
+  if(editingIndex !== null){
+    drugs[editingIndex] = d;
+    editingIndex = null;
+  } else {
+    drugs.push(d);
+  }
+  saveDrugs();
+  alert("Saved!");
+  ["drugName","drugUse","drugClass","whoCan","whoCant","pregSafe"].forEach(id=>document.getElementById(id).value="");
+  renderAdminTotals();
+  renderAdminList();
+  if(document.getElementById("drugArea").style.display==="block") loadDrugs();
+}
+
+function renderAdminTotals(){
+  const totalDrugs = drugs.length;
+  const totalQuestions = totalDrugs * 5;
+  document.getElementById("adminTotals").textContent = `Total Drugs: ${totalDrugs} | Total Quiz Questions: ${totalQuestions}`;
+}
+
+function renderAdminList(filter=""){
+  const list = document.getElementById("adminDrugList");
+  list.innerHTML = "";
+  const search = filter.toLowerCase();
+  drugs.forEach((d,i)=>{
+    if(d.name.toLowerCase().includes(search)){
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `<b>${d.name}</b><br>Use: ${d.use}<br>Class: ${d.class}<br>
+        <button class='edit-btn' onclick='editDrug(${i})'>Edit</button> 
+        <button class='delete-btn' onclick='deleteDrug(${i})'>Delete</button>`;
+      list.appendChild(div);
+    }
+  });
+}
+
+function filterAdminDrugs() {
+  const val = document.getElementById("adminSearchInput").value;
+  renderAdminList(val);
+}
+
+function editDrug(i){
+  const d = drugs[i];
+  editingIndex = i;
+  document.getElementById("drugName").value = d.name;
+  document.getElementById("drugUse").value = d.use;
+  document.getElementById("drugClass").value = d.class;
+  document.getElementById("whoCan").value = d.whoCan;
+  document.getElementById("whoCant").value = d.whoCant;
+  document.getElementById("pregSafe").value = d.pregnancy;
+  alert("Now editing: " + d.name);
+}
+
+function deleteDrug(i){
+  if(confirm("Delete this drug?")){
+    drugs.splice(i,1);
+    saveDrugs();
+    renderAdminTotals();
+    renderAdminList();
+    if(document.getElementById("drugArea").style.display==="block") loadDrugs();
+  }
+}
+
+function buildQuestions(category){
+  const q = [];
+  drugs.forEach(d=>{
+    if(d[category]){
+      const prompt = category==="use" ? `What is ${d.name} used for?` :
+                     category==="class" ? `Which class does ${d.name} belong to?` :
+                     category==="pregnancy" ? `Is ${d.name} safe during pregnancy?` :
+                     category==="whoCan" ? `Who CAN take ${d.name}?` : `Who CANNOT take ${d.name}?`;
+      const correct = d[category];
+      const opts = [correct];
+      while(opts.length < 4){
+        const o = drugs[Math.floor(Math.random()*drugs.length)][category];
+        if(o && !opts.includes(o)) opts.push(o);
+      }
+      q.push({q: prompt, options: opts.sort(()=>0.5-Math.random()), a: correct});
+    }
+  });
+  return q;
+}
+
+function startQuiz(category){
+  showSection("quizArea");
+  const form = document.getElementById("quizForm");
+  form.innerHTML = "";
+  const pool = buildQuestions(category);
+  currentQuiz = pool.sort(() => 0.5 - Math.random()).slice(0,10);
+  currentQuiz.forEach((q,i) => {
+    const opts = q.options.map(opt =>
+      `<label class='option-label'><input type='radio' name='q${i}' class='option-input' value='${opt}' onchange='handleAnswer(${i}, "${opt.replace(/\"/g, "&quot;")}")'> ${opt}</label>`
+    ).join("");
+    form.insertAdjacentHTML("beforeend", `<div class='card'><b>${i+1}. ${q.q}</b>${opts}</div>`);
+  });
+  timeLeft = 180;
+  clearInterval(timer);
+  timer = setInterval(updateTimer, 1000);
+  document.getElementById("quizResult").innerHTML = "";
+}
+
+function handleAnswer(i,val){
+  const q = currentQuiz[i];
+  const inputs = document.querySelectorAll(`input[name='q${i}']`);
+  inputs.forEach(inp=>{
+    inp.parentElement.classList.remove("correct-answer", "wrong-answer");
+    if(inp.value === q.a) inp.parentElement.classList.add("correct-answer");
+    else if(inp.value === val) inp.parentElement.classList.add("wrong-answer");
+  });
+}
+
+function updateTimer(){
+  const m = Math.floor(timeLeft/60), s = timeLeft % 60;
+  document.getElementById("timer").textContent = `Time: ${m}:${s<10 ? "0" : ""}${s}`;
+  if(--timeLeft < 0) { clearInterval(timer); submitQuiz(); }
+}
+
+function submitQuiz(){
+  clearInterval(timer);
+  const frm = document.getElementById("quizForm");
+  let score = 0, res = "";
+  currentQuiz.forEach((q,i) => {
+    const sel = frm[`q${i}`]?.value;
+    if(sel === q.a) { score++; res += `<p class='correct'>✔ Q${i+1}: Correct</p>`; }
+    else res += `<p class='wrong'>✖ Q${i+1}: Wrong. Correct: <b>${q.a}</b></p>`;
+  });
+  res += `<h3>Your score: ${score}/10</h3>`;
+  document.getElementById("quizResult").innerHTML = res;
+
+  const hist = JSON.parse(localStorage.getItem("quizHistory")) || [];
+  hist.push({ score, total:10, time: new Date().toLocaleString() });
+  localStorage.setItem("quizHistory", JSON.stringify(hist));
+}
+
+showSection("drugArea");
+</script>
+</body>
+</html>
